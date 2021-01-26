@@ -1,0 +1,4 @@
+percentUp = variance(-10,>,5,close)' );
+localMax = point( trend(close,>,-20), variance(close,>,-10,+10), trend(close,>,10), variance(close,>,2,+5), test(close,>,percent(+5,average10)) )
+localMin = point( trend(-20,<,close), variance(-10,<,-10,close), trend(10,<,close), variance(2,<,-5,close), test(close,<,percent(-5,average10)) )
+goingUp = pattern( localMin, localMax, localMin, localMax, localMin )

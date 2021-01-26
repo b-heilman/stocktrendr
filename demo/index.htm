@@ -1,0 +1,332 @@
+<html>
+
+<head>
+	<meta charset="utf-8">
+ 	<script src="bower_components/d3/d3.js"></script>
+ 	<script src="bower_components/jquery/dist/jquery.js"></script>
+	<script src="bower_components/angular/angular.js"></script>
+	<script src="bower_components/bmoor/dist/bmoor.js"></script>
+	<script src="vgraph.js"></script>
+	<script src="stocktrendr.js"></script>
+	<link href="vgraph.css" rel="stylesheet" type="text/css" />
+</head>
+<body ng-app="vgraph">
+
+	<style>
+		.graph {
+			width: 600px;
+		}
+
+		.menu {
+			float: right;
+			width: 400px;
+		}
+
+		[vgraph-chart].view {
+			margin: 10px 30px;
+			padding: 0px 10px 60px 40px;
+			width: 600px;
+			height: 300px;
+		}
+
+		[vgraph-chart].zoom {
+			margin-top: 10px;
+			padding: 0px 10px 60px 70px;
+			width: 600px;
+			height: 100px;
+		}
+
+		[vgraph-chart] .mat {
+			fill: #ddd;
+		}
+
+		[name="close"] {
+			stroke: black;
+    		stroke-width: 2;
+    		fill: none;
+		}
+
+		svg.icon {
+			width: 16px;
+			height: 16px;
+		}
+
+		[vgraph-axis] .tick line {
+		    stroke: #626262;
+		    stroke-width: 1;
+		}
+
+		[vgraph-target] line.focus {
+    		stroke: #333;
+		}
+
+		.console {
+			display: block;
+		}
+
+		.console textarea {
+			width: 90%;
+			height: 4em;
+			margin: 0px auto;
+			display: block;
+		}
+
+		.console .controls{
+			display: block;
+		}
+	</style>
+
+	<div ng-controller="StaticCtrl">
+		<div class='console'>
+			<ol class="commands">
+				<li ng-repeat="expression in expressor.expressions" ng-if="expression.name">
+					<span class="count">({{expression.results.length}})</span>
+					<span class="operation">{{expression.operation}}</span>
+					<button ng-click="saveExpression(expression)">^</button>
+				</li>
+			</ol>
+			<textarea ng-model="analysis"></textarea>
+			<span class="controls">
+				<button ng-click="express()">Express Now</button>
+			</span>
+		</div>
+		<div class="menu">
+			<ul class="legend">
+				<li ng-repeat="conf in config">
+					{{conf.title}}
+					<button type="button" class="highlight plot-{{conf.name}}"
+						ng-click="removeConf( conf )">X</button>
+				</li>
+			</ul>
+			<hr/>
+			{{show.icon}}
+			<ul>
+				<li ng-repeat="v in expressor.variables">
+					<button ng-if="expressor.expressions[v].type === 'number'" 
+						ng-click="show.line = v">O</button>
+					<button ng-if="expressor.expressions[v].type === 'boolean'" 
+						ng-click="show.icon = v">O</button>
+					<span ng-click="conf.value = v">{{v}} : {{expressor.expressions[v].type}}</span>
+				</li>
+			</ul>
+			<form>
+				<legend>Title <input type="text" ng-model="conf.title"></input></legend>
+				<legend>Legend <input type="text" ng-model="conf.legend"></input></legend>
+				<legend>Value <input type="text" ng-model="conf.value"></input></legend>
+				<legend>Color <input type="color" ng-model="conf.color"></input></legend>
+				<button type="button" ng-click="addConf()">Add</button>
+			</form>
+		</div>
+		<div class="graph">
+			<span class="feed">
+				<span class="timeframe"
+					>Time: <span class="time">{{highlight.point.$interval | date:'yyyy-MM-dd'}}</span
+				></span>
+	            <span class="values"
+	        		><span ng-repeat="(i , conf) in config"
+	            		class="instance"
+	            		><span class="name"
+	            			>{{conf.title}}:</span
+	            		><svg class="icon">
+	            			<circle r="6" transform="translate(6,6)" class="plot-{{conf.name}}"
+	            			></circle>
+	                	</svg
+	            		><span class="value">{{highlight.point[conf.name]}}</span>
+	        		</span
+	        	></span>
+	        </span>
+			<svg vgraph-chart="viewBox" model="viewModel" class="view">
+				<g vgraph-axis="'left'"
+	                tick-length="4" tick-padding="-2"
+	                axis-label="'Price'" label-offset="55" ></g>
+	            <g vgraph-axis="'bottom'"
+	                tick-length="4" tick-padding="-2" 
+	                tick-rotation="-45"></g>
+	            <g vgraph-line="data" interval="'date'" 
+					value="'close'" name="close"></g>
+				<g vgraph-multi-line="data"
+	                config="config"
+	                ></g>
+	            <g vgraph-icon="data" width="5" height="10" 
+	            	value="show.icon" interval="'date'"
+	            	alias='close' name="bottom" show-under="true">
+	            	<polygon width="5" height="10" points="2,0 0,10 4,10" 
+	            		style="fill:green;stroke:green;stroke-width:1" />
+	            </g>
+				<g vgraph-target="highlight"
+					point-radius="5"></g>
+				<g vgraph-focus="dragPos" lose-focus="dragStop"></g>
+				<g vgraph-interact="highlight"
+	                d-begin="dragStart"
+	                d-change="dragPos"
+	                d-end="dragStop"
+	                ></g>
+			</svg>
+			<svg class='zoom' vgraph-chart="zoomBox" model="zoomModel" class="zoom">
+	            <g vgraph-line="data" interval="'date'" 
+					value="'close'" name="close"></g>
+	            <g vgraph-zoom="viewModel" zoom-min="min" zoom-max="max"></g>
+	        </svg>
+	    </div>
+	    <div class="stats">
+	    	<ul ng-repeat="(key,stat) in stats" ng-if="stat.matches">
+	    		<li>
+	    			<b>{{key}} : {{stat.matches}}</b>
+	    			<ol ng-repeat="(k,acc) in stat.accuracy">
+	    				<li>{{k}} : {{acc.count / stat.matches}}({{acc.count}} : {{acc.value}})</li>
+	    			</ol>
+	    		</li>
+	    	</ul>
+	    </div>
+	</div>
+<script>
+angular.module( 'vgraph' ).controller( 'StaticCtrl',
+	['$scope', 'BoxModel', 'GraphModel', '$http',
+	function( $scope, BoxModel, GraphModel, $http ){
+		var count = 0,
+			data = [],
+			config = [],
+			interval,
+			zoomModel = new GraphModel({
+	            x : {
+	                scale : function(){
+	                    return d3.time.scale.utc();
+	                }
+	            },
+	            y : {
+	                padding : 0.05
+	            }
+	        }),
+			graphModel = new GraphModel({
+	            x : {
+	                scale : function(){
+	                    return d3.time.scale.utc();
+	                }
+	            },
+	            y : {
+	                padding : 0.05
+	            }
+	        });
+
+		$scope.data = data;
+		$scope.show = {};
+		$scope.conf = {};
+		$scope.config = config;
+		$scope.viewBox = new BoxModel();
+		$scope.viewModel = graphModel;
+		$scope.zoomBox = new BoxModel();
+		$scope.zoomModel = zoomModel;
+
+		$scope.addConf = function(){
+			config.push({
+	            title : $scope.conf.title,
+	            legend : $scope.conf.legend,
+	            name : 'plot_' + (count++),
+	            color : $scope.conf.color,
+	            x : 'date',
+	            y : $scope.conf.value
+	        });
+
+	        $scope.conf = {};
+		};
+
+		$scope.express = function(){
+			var i, c,
+				commands = $scope.analysis.split('\n'),
+				expression;
+
+			for( i = 0, c = commands.length; i < c; i++ ){
+				$scope.expressor.express( commands[i] );
+			}
+
+			$scope.analysis = '';
+		};
+		/*
+		config.push({
+            title : 'close',
+            legend : 'Close',
+            name : 'plot_' + (count++),
+            color : 'red',
+            x : 'date',
+            y : 'close'
+        });
+		*/
+		zoomModel.x.format = graphModel.x.format = function( date ){
+            return date.getFullYear()+'-'+date.getMonth()+'-'+date.getDate();
+        };
+
+        bMoor.inject([
+        	'stocktrendr.Expressor', 'stocktrendr.DataSet',
+        	function( Expressor, DataSet ){
+
+        		$scope.load = function( ticker ){
+        			$.ajax({
+						dataType: 'json',
+						url: 'http://localhost:9001/ticker/'+ticker.toLowerCase()
+					}).done(function( res ) {
+						var data = res.data,
+							i, c;
+
+						$scope.data = data;
+						$scope.expressor = new Expressor( new DataSet($scope.data), res.expressor );
+
+						$scope.viewModel.setBounds({
+			                min : +data[0].date,
+			                max : +data[ data.length-1 ].date
+			            },{
+			                min : null,
+			                max : null
+			            })
+			            .setPane({
+			                start : null,
+			                stop : null
+			            },{
+			                start : null,
+			                stop : null
+			            });
+
+			            $scope.zoomModel.setBounds({
+			                min : +data[0].date,
+			                max : +data[ data.length-1 ].date
+			            },{
+			                min : null,
+			                max : null
+			            })
+			            .setPane({
+			                start : null,
+			                stop : null
+			            },{
+			                start : null,
+			                stop : null
+			            });
+
+						$scope.$apply();
+					}).fail(function() {
+						console.log( arguments );
+					});
+        		};
+
+        		$scope.saveExpression = function( expression ){
+        			$http.post( 'http://localhost:9001/save/someUser', expression.deflate() );
+        			/*
+        			$.ajax({
+        				method: 'POST',
+        				data: expression.deflate(),
+						dataType: 'json',
+						url: 'http://localhost:9001/save/someUser'
+					}).done(function( res ) {
+						console.log( res );
+					});
+					*/
+        		};
+
+        		$scope.load('amd');
+        	}
+        ]);
+	}]
+);
+</script>
+
+</body>
+
+</html>

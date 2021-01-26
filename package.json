@@ -1,0 +1,39 @@
+{
+  "name": "stocktrendr",
+  "version": "0.0.1",
+  "description": "System for finding stock trends",
+  "main": "parser.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.9.3",
+    "express": "*",
+    "fast-csv": "*",
+    "gulp": "*",
+    "gulp-clean": "*",
+    "gulp-concat": "*",
+    "gulp-footer": "*",
+    "gulp-header": "*",
+    "gulp-jshint": "*",
+    "gulp-karma": "*",
+    "gulp-rename": "*",
+    "gulp-serve": "*",
+    "gulp-uglifyjs": "*",
+    "gulp-watch": "*",
+    "gulp-yuidoc": "*",
+    "http": "*",
+    "jshint": "*",
+    "jshint-stylish": "*",
+    "karma": "*",
+    "karma-chrome-launcher": "*",
+    "karma-firefox-launcher": "*",
+    "karma-ie-launcher": "*",
+    "karma-jasmine": "*",
+    "karma-phantomjs-launcher": "*",
+    "karma-safari-launcher": "*",
+    "map-stream": "*"
+  }
+}
